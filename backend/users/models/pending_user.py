@@ -4,6 +4,8 @@ from django.db import models,transaction
 from address.models import Country, State, District, SubDistrict, Village
 from .petitioners import Petitioner
 
+from ..channels.channelViews import send_notification_to_initiator
+
 
 class PendingUser(models.Model):
     gmail = models.EmailField(unique=True)
@@ -35,17 +37,15 @@ class PendingUser(models.Model):
 
     @transaction.atomic
     def verify_and_transfer(self):
-        if  self.is_verified:
-            
-        
-        # Transfer data to Petitioner
+        if self.is_verified:
+            # Transfer data to Petitioner
             petitioner = Petitioner.objects.create(
                 gmail=self.gmail,
                 first_name=self.first_name,
                 last_name=self.last_name,
                 profile_picture=self.profile_picture.url if self.profile_picture else None,
                 date_of_birth=self.date_of_birth,
-                gender=self.gender[0],  # Matching GENDER_CHOICES format
+                gender=self.gender[0],
                 country=self.country,
                 state=self.state,
                 district=self.district,
@@ -54,7 +54,12 @@ class PendingUser(models.Model):
                 initiator_id=None if self.initiator_id == 0 else self.initiator_id,
             )
 
-        # Remove pending user record
-       
+            # Send notification to the initiator
+            if self.initiator_id:
+                self.send_notification_to_initiator()
 
-        return petitioner
+            # Remove the pending user record
+            self.delete()
+
+            return petitioner
+

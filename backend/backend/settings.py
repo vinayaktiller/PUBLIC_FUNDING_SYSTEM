@@ -52,6 +52,16 @@ INSTALLED_APPS = [
     'users',
 ]
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            #"hosts": [("127.0.0.1", 6379)],  # Update with your Redis server address and port
+            "hosts": [(os.environ.get("CHANNELS_URLS", "redis://localhost:6379/0"))],
+        },
+    },
+}
+
 MIDDLEWARE = [
 
     'corsheaders.middleware.CorsMiddleware',

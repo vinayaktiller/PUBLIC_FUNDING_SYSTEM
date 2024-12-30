@@ -41,7 +41,8 @@ class LoginWithGoogle(APIView):
                 return Response({
                     'user_type': user_type,
                     'user_email': user_email,
-                    'tokens': tokens
+                    'tokens': tokens,
+                    'user_id': user.id
                 })
             elif user_type == 'pendinguser':
                 return Response({

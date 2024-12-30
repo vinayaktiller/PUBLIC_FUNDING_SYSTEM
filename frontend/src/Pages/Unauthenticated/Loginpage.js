@@ -33,6 +33,7 @@ function Loginpage() {
         if (user_type === 'olduser') {
           Cookies.set('access_token', tokens.access);
           Cookies.set('refresh_token', tokens.refresh);
+          localStorage.setItem("user_id", data["user_id"]);
           dispatch(Login({ user_email }));
           navigate('/home');  // Redirect to main page or dashboard
 

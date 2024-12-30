@@ -34,7 +34,7 @@ Thumbs.db
 
 # Virtual environments
 venv/
-env/
+
 .myvenv/
 petitionenv/
 
