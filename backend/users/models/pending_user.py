@@ -4,11 +4,11 @@ from django.db import models,transaction
 from address.models import Country, State, District, SubDistrict, Village
 from .petitioners import Petitioner
 
-from ..channels.channelViews import send_notification_to_initiator
+
 
 
 class PendingUser(models.Model):
-    gmail = models.EmailField(unique=True)
+    gmail = models.EmailField(unique=True,null=False,blank=False)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True)
@@ -32,12 +32,39 @@ class PendingUser(models.Model):
             self.initiator_id = None
             self.is_verified = True
             self.verify_and_transfer()
+        else:
+            from ..channels.channelViews import send_notification_to_initiator 
+            notification_id = f"{self.gmail}"
+            print(f"Generated Notification ID: {notification_id}")
+
+            # Call notification function with the notification ID
+            print("send_notification_to_initiator is about to be called")
+            send_notification_to_initiator(
+                self.initiator_id,
+                {
+                    "message": f"Are you initiating {self.first_name} {self.last_name}?",
+                    "notificationId": notification_id,
+                },
+            )
+            print(f"Notification sent with ID: {notification_id}")
         
         return super().save(*args, **kwargs)
+            
+        
+        
 
     @transaction.atomic
     def verify_and_transfer(self):
         if self.is_verified:
+            initiator = None
+            if self.initiator_id != 0:
+
+                try:
+                    initiator = Petitioner.objects.get(id=self.initiator_id)
+                except Petitioner.DoesNotExist:
+                    print(f"Initiator with ID {self.initiator_id} does not exist.")
+                    return None
+            
             # Transfer data to Petitioner
             petitioner = Petitioner.objects.create(
                 gmail=self.gmail,
@@ -51,15 +78,12 @@ class PendingUser(models.Model):
                 district=self.district,
                 subdistrict=self.subdistrict,
                 village=self.village,
-                initiator_id=None if self.initiator_id == 0 else self.initiator_id,
+                initiator_id=initiator  # Set the Petitioner instance, not the integer ID
             )
-
-            # Send notification to the initiator
-            if self.initiator_id:
-                self.send_notification_to_initiator()
-
+            
             # Remove the pending user record
             self.delete()
 
             return petitioner
+
 

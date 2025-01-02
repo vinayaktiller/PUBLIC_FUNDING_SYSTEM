@@ -6,7 +6,11 @@ function Navigationbar() {
   const dispatch = useDispatch();
 
   const handleLogout = () => {
+    localStorage.removeItem('user_id');
+
     dispatch(logout());
+
+    window.location.reload();
   };
 
   return (

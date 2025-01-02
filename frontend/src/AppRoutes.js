@@ -11,6 +11,7 @@ import ProtectedRoute from './User/ProtectedRoute';
 import Mainbar from './Layout/Mainbar';
 import Waitingpage from './Pages/Unauthenticated/Waitingpage';
 import Registration from './Pages/Unauthenticated/Registration';
+import Landingpage from './Pages/Authenticated/Landingpage'; 
 
 
 
@@ -24,7 +25,8 @@ const AppRoutes = () => {
           <Route path="/login" element={<Loginpage />} />
           <Route path="/waiting" element={<Waitingpage />} />
           <Route path="/register" element={<Registration />} />
-          <Route path="/" element={<ProtectedRoute />}> 
+          <Route path="/" element={<ProtectedRoute />}>
+          <Route path="/landing-page" element={<Landingpage />} />
             <Route path="/" element={<Mainbar />}> 
               <Route path="home" element={<Homepage />} /> 
               <Route path="profile" element={<Profilepage />} /> 

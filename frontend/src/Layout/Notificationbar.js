@@ -1,38 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { sendWebSocketResponse } from "../Notifications/notificationsThunk";
+import { removeNotification } from "../Notifications/notificationsSlice";
 
 function NotificationBar() {
-    const [notifications, setNotifications] = useState([]);
+    const dispatch = useDispatch();
+    const notifications = useSelector((state) => state.notifications.notifications);
 
-    useEffect(() => {
-        const userId = localStorage.getItem("user_id");
-        if (!userId) {
-            console.error("User ID not found in local storage");
-            return;
-        }
-
-        const newSocket = new WebSocket(`ws://localhost:8000/ws/notifications/`);
-
-        newSocket.onopen = () => {
-            console.log("Connected to WebSocket server");
-        };
-
-        newSocket.onmessage = (event) => {
-            const notification = JSON.parse(event.data).notification;
-            setNotifications((prev) => [...prev, notification]);
-        };
-
-        newSocket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-        };
-
-        newSocket.onclose = (event) => {
-            console.log("WebSocket closed:", event);
-        };
-
-        return () => {
-            newSocket.close();
-        };
-    }, []);
+    const handleResponse = (notificationId, response) => {
+        dispatch(sendWebSocketResponse(notificationId, response)); // Send the response
+        dispatch(removeNotification(notificationId)); // Remove the notification
+    };
 
     return (
         <div className="noti">
@@ -42,7 +20,11 @@ function NotificationBar() {
             ) : (
                 <ul>
                     {notifications.map((notification, index) => (
-                        <li key={index}>{notification}</li>
+                        <li key={index}>
+                            <p>{notification.message}</p>
+                            <button onClick={() => handleResponse(notification.notificationId, "yes")}>Yes</button>
+                            <button onClick={() => handleResponse(notification.notificationId, "no")}>No</button>
+                        </li>
                     ))}
                 </ul>
             )}

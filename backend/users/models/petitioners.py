@@ -40,7 +40,7 @@ class Petitioner(AbstractBaseUser):
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
     full_name = models.CharField(max_length=60, editable=False)
-    username = models.CharField(max_length=50, unique=True)
+    username = models.CharField(max_length=50, unique=True, null=True, blank=True)
     profile_picture = models.URLField(blank=True)
 
     
@@ -75,6 +75,7 @@ class Petitioner(AbstractBaseUser):
         self.age = self.calculate_age()
 
         # Automatically generate unique user_id based on existing petitioners
+        print("Petitioner saved with username: " + self.username)
         
         super().save(*args, **kwargs)
 
