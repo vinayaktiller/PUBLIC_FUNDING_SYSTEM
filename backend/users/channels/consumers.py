@@ -48,8 +48,10 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 pending_user = await database_sync_to_async(PendingUser.objects.get)(gmail=notification_id)
                 print("Pending user is " + str(pending_user.first_name))
                 if pending_user:
+                    print("Pending user is " + str(pending_user.last_name))
                     # Update the instance and transfer verification
                     pending_user.is_verified = True
+                    print("Pending user is " + str(pending_user.is_verified))
                     await database_sync_to_async(pending_user.verify_and_transfer)()
                     print(f"User {notification_id} has been verified and transferred.")
                 else:

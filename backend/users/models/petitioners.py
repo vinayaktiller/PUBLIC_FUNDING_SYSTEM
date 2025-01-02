@@ -15,7 +15,7 @@ class CustomUserManager(BaseUserManager):
             gmail=gmail,
             first_name=first_name,
             last_name=last_name,
-            full_name=f"{first_name} {last_name}",
+            full_name=f"{first_name}{last_name}",
             **extra_fields
         )
         user.set_password(password)
@@ -71,7 +71,7 @@ class Petitioner(AbstractBaseUser):
 
     def save(self, *args, **kwargs):
         # Automatically calculate full name and age
-        self.full_name = f"{self.first_name} {self.last_name}"
+        self.full_name = f"{self.first_name}{self.last_name}"
         self.age = self.calculate_age()
 
         # Automatically generate unique user_id based on existing petitioners
