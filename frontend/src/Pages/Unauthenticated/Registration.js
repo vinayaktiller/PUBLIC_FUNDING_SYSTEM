@@ -1,90 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import './css/Registration.css';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FormDataInitialState } from './Registrationpage/registrationTypes';
+import { useAddressSelection } from './Registrationpage/useAddressSelection';
+import { useInitiatorValidation } from './Registrationpage/useInitiatorValidation';
+import { registrationService } from './Registrationpage/registrationService';
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import Slider from '@mui/material/Slider'; // For zoom and rotation sliders
+import './css/Registration.css';
+import Cookies from 'js-cookie';
+import {profileService} from './Registrationpage/profileService';
 
 function Registration() {
-  const [formData, setFormData] = useState({
-    gmail: localStorage.getItem("user_email") || '',
-    first_name: '',
-    last_name: '',
-    date_of_birth: '',
-    gender: '',
-    country: '',
-    state: '',
-    district: '',
-    subdistrict: '',
-    village: '',
-
-    profile_picture: null,
-    initiator_id: '',
-  });
-
-  const [countries, setCountries] = useState([]);
-  const [states, setStates] = useState([]);
-  const [districts, setDistricts] = useState([]);
-  const [subDistricts, setSubDistricts] = useState([]);
-  const [villages, setVillages] = useState([]);
-  const [initiatorDetails, setInitiatorDetails] = useState(null);
-  const [error, setError] = useState("");
-
   const navigate = useNavigate();
+  const {
+    countries,
+    states,
+    districts,
+    subDistricts,
+    villages,
+    fetchCountries,
+    fetchStates,
+    fetchDistricts,
+    fetchSubdistricts,
+    fetchVillages,
+    setStates,
+    setDistricts,
+    setSubDistricts,
+    setVillages,
+  } = useAddressSelection();
 
-  // Fetch countries on component mount
+  const { initiatorDetails, error, validateInitiatorID } = useInitiatorValidation();
+
+  const [formData, setFormData] = useState(FormDataInitialState);
+  const [src, setSrc] = useState(null); // Source image
+  const [crop, setCrop] = useState({ aspect: 100 / 110 }); // Fixed aspect ratio
+  const [croppedImage, setCroppedImage] = useState(null); // Cropped image result
+  const [zoom, setZoom] = useState(1); // Zoom level
+  const [rotation, setRotation] = useState(0); // Rotation angle
+  const imgRef = useRef(null); // Reference to the image element
+
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/address/countries/')
-      .then((response) => response.json())
-      .then((data) => setCountries(data))
-      .catch((error) => console.error('Error fetching countries:', error));
-  }, []);
+    fetchCountries();
+  }, [fetchCountries]);
 
-  const handleCountryChange = (e) => {
-    const countryId = e.target.value;
-    setFormData((prev) => ({ ...prev, country: countryId, state: '', district: '', subdistrict: '', village: '' }));
-    setStates([]);
-    setDistricts([]);
-    setSubDistricts([]);
-    setVillages([]);
-
-    fetch(`http://127.0.0.1:8000/address/states/${countryId}/`)
-      .then((response) => response.json())
-      .then((data) => setStates(data))
-      .catch((error) => console.error('Error fetching states:', error));
-  };
-
-  const handleStateChange = (e) => {
-    const stateId = e.target.value;
-    setFormData((prev) => ({ ...prev, state: stateId, district: '', subdistrict: '', village: '' }));
-    setDistricts([]);
-    setSubDistricts([]);
-    setVillages([]);
-
-    fetch(`http://127.0.0.1:8000/address/districts/${stateId}/`)
-      .then((response) => response.json())
-      .then((data) => setDistricts(data))
-      .catch((error) => console.error('Error fetching districts:', error));
-  };
-
-  const handleDistrictChange = (e) => {
-    const districtId = e.target.value;
-    setFormData((prev) => ({ ...prev, district: districtId, subdistrict: '', village: '' }));
-    setSubDistricts([]);
-    setVillages([]);
-
-    fetch(`http://127.0.0.1:8000/address/subdistricts/${districtId}/`)
-      .then((response) => response.json())
-      .then((data) => setSubDistricts(data))
-      .catch((error) => console.error('Error fetching subdistricts:', error));
-  };
-
-  const handleSubdistrictChange = (e) => {
-    const subdistrictId = e.target.value;
-    setFormData((prev) => ({ ...prev, subdistrict: subdistrictId, village: '' }));
-    setVillages([]);
-
-    fetch(`http://127.0.0.1:8000/address/villages/${subdistrictId}/`)
-      .then((response) => response.json())
-      .then((data) => setVillages(data))
-      .catch((error) => console.error('Error fetching villages:', error));
+  const handleAddressChange = async (type, value) => {
+    switch (type) {
+      case 'country':
+        setFormData((prev) => ({
+          ...prev,
+          country: value,
+          state: '',
+          district: '',
+          subdistrict: '',
+          village: '',
+        }));
+        setStates([]);
+        setDistricts([]);
+        setSubDistricts([]);
+        setVillages([]);
+        await fetchStates(value);
+        break;
+      case 'state':
+        setFormData((prev) => ({
+          ...prev,
+          state: value,
+          district: '',
+          subdistrict: '',
+          village: '',
+        }));
+        setDistricts([]);
+        setSubDistricts([]);
+        setVillages([]);
+        await fetchDistricts(value);
+        break;
+      case 'district':
+        setFormData((prev) => ({
+          ...prev,
+          district: value,
+          subdistrict: '',
+          village: '',
+        }));
+        setSubDistricts([]);
+        setVillages([]);
+        await fetchSubdistricts(value);
+        break;
+      case 'subdistrict':
+        setFormData((prev) => ({
+          ...prev,
+          subdistrict: value,
+          village: '',
+        }));
+        setVillages([]);
+        await fetchVillages(value);
+        break;
+      default:
+        break;
+    }
   };
 
   const handleChange = (e) => {
@@ -92,107 +104,111 @@ function Registration() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    setFormData((prev) => ({ ...prev, profile_picture: e.target.files[0] }));
+  // Handle file selection
+  const onSelectFile = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSrc(reader.result));
+      reader.readAsDataURL(e.target.files[0]);
+    }
   };
+
+  // Handle crop completion
+  const onCropComplete = (crop) => {
+    if (src && imgRef.current) {
+      const croppedImageUrl = getCroppedImg(imgRef.current, crop);
+      setCroppedImage(croppedImageUrl);
+    }
+  };
+
+  // Generate the cropped image
+  const getCroppedImg = (image, crop) => {
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    return canvas.toDataURL('image/jpeg'); // Return as base64
+  };
+
+  // Handle upload to backend
+  const handleUpload = async () => {
+    try {
+      const result = await profileService.uploadProfilePicture(croppedImage);
+      const filePath = result.file_path;
+      setFormData((prev) => ({ ...prev, profile_picture: filePath }));
+      alert('Profile picture uploaded successfully!');
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+  
 
   const handleInitiatorIDChange = async (e) => {
     const id = e.target.value;
     setFormData((prev) => ({ ...prev, initiator_id: id }));
-
-    if (id === '0') {
-      // Allow if ID is 0
-      setInitiatorDetails({
-        profile_picture: '',  // Or any placeholder image
-        full_name: 'First Member',
-        username: 'N/A'
-      });
-      setError("");
-    } else if (id) {
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/users/validate-initiator/${id}/`);
-        
-        if (!response.ok) {
-          throw new Error("Invalid Initiator ID");
-        }
-        
-        const data = await response.json();
-        setInitiatorDetails(data);
-        setError(""); // Clear error if valid
-      } catch (err) {
-        setInitiatorDetails(null);
-        setError(err.message || "Invalid Initiator ID.");
-      }
-    } else {
-      setInitiatorDetails(null);
-      setError(""); // Clear error if empty
-    }
+    await validateInitiatorID(id);
   };
-
-  
 
   const handleSubmit = async (e) => {
-    console.log('Form data:', formData);
-    
     e.preventDefault();
-    const formDataToSend = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      formDataToSend.append(key, value);
-    });
-
+    console.log(formData);
     try {
-      const response = await fetch('http://127.0.0.1:8000/users/pending-users/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') // Include CSRF token 
-          },
-        body: formDataToSend,
-      });
-      if (response.ok) {
-        const result = await response.json();
-        console.log('User created successfully:', result);
-        navigate('/waiting');
-      } else {
-        console.error('Error creating user:', response.statusText);
-      }
+      await registrationService.submitRegistration(formData);
+      console.log(formData);
+      navigate('/waiting');
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Submission failed', error);
     }
-  };
-  const getCookie = (name) => {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
   };
 
   return (
-
-    <form id="specific-form" onSubmit={handleSubmit} >
-      <h2>Create Pending User</h2>
-
+    <form id="specific-form" onSubmit={handleSubmit}>
+      {/* Form fields for first name, last name, date of birth, gender, etc. */}
       <div className="form-group">
         <label>First Name:</label>
-        <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} required />
+        <input
+          type="text"
+          name="first_name"
+          value={formData.first_name}
+          onChange={handleChange}
+          required
+        />
       </div>
-
       <div className="form-group">
         <label>Last Name:</label>
-        <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} required />
+        <input
+          type="text"
+          name="last_name"
+          value={formData.last_name}
+          onChange={handleChange}
+          required
+        />
       </div>
-
       <div className="form-group">
         <label>Date of Birth:</label>
-        <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} required />
+        <input
+          type="date"
+          name="date_of_birth"
+          value={formData.date_of_birth}
+          onChange={handleChange}
+          required
+        />
       </div>
-
       <div className="form-group">
         <label>Gender:</label>
         <select name="gender" value={formData.gender} onChange={handleChange} required>
@@ -203,9 +219,15 @@ function Registration() {
         </select>
       </div>
 
+      {/* Address selection fields */}
       <div className="form-group">
         <label>Country:</label>
-        <select name="country" value={formData.country} onChange={handleCountryChange} required>
+        <select
+          name="country"
+          value={formData.country}
+          onChange={(e) => handleAddressChange('country', e.target.value)}
+          required
+        >
           <option value="">Select Country</option>
           {countries.map((country) => (
             <option key={country.id} value={country.id}>
@@ -214,10 +236,15 @@ function Registration() {
           ))}
         </select>
       </div>
-
       <div className="form-group">
         <label>State:</label>
-        <select name="state" value={formData.state} onChange={handleStateChange} required disabled={!states.length}>
+        <select
+          name="state"
+          value={formData.state}
+          onChange={(e) => handleAddressChange('state', e.target.value)}
+          required
+          disabled={!states.length}
+        >
           <option value="">Select State</option>
           {states.map((state) => (
             <option key={state.id} value={state.id}>
@@ -226,10 +253,15 @@ function Registration() {
           ))}
         </select>
       </div>
-
       <div className="form-group">
         <label>District:</label>
-        <select name="district" value={formData.district} onChange={handleDistrictChange} required disabled={!districts.length}>
+        <select
+          name="district"
+          value={formData.district}
+          onChange={(e) => handleAddressChange('district', e.target.value)}
+          required
+          disabled={!districts.length}
+        >
           <option value="">Select District</option>
           {districts.map((district) => (
             <option key={district.id} value={district.id}>
@@ -238,13 +270,12 @@ function Registration() {
           ))}
         </select>
       </div>
-
       <div className="form-group">
         <label>Subdistrict:</label>
         <select
           name="subdistrict"
           value={formData.subdistrict}
-          onChange={handleSubdistrictChange}
+          onChange={(e) => handleAddressChange('subdistrict', e.target.value)}
           required
           disabled={!subDistricts.length}
         >
@@ -256,10 +287,15 @@ function Registration() {
           ))}
         </select>
       </div>
-
       <div className="form-group">
         <label>Village:</label>
-        <select name="village" value={formData.village} onChange={handleChange} required disabled={!villages.length}>
+        <select
+          name="village"
+          value={formData.village}
+          onChange={handleChange}
+          required
+          disabled={!villages.length}
+        >
           <option value="">Select Village</option>
           {villages.map((village) => (
             <option key={village.id} value={village.id}>
@@ -269,48 +305,86 @@ function Registration() {
         </select>
       </div>
 
+      {/* Profile picture upload and cropping */}
       <div className="form-group">
-        <label>Profile Picture:</label>
-        <input type="file" name="profilePicture" onChange={handleFileChange} />
-      </div>
+        <label>Upload Profile Picture</label>
+        <input type="file" accept="image/*" onChange={onSelectFile} />
 
-      <div className="form-group">
-        <label>Initiator ID:</label>
-        <input
-          type="number"
-          name="initiatorId"
-          value={formData.initiatorId}
-          onChange={handleInitiatorIDChange}
-          placeholder="Enter initiator ID"
-          required
-        />
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        {initiatorDetails && (
-          <div className="initiator-card">
-            {initiatorDetails.profile_picture && (
+        {src && (
+          <div>
+            <h2>Crop Your Image</h2>
+            <ReactCrop
+              src={src}
+              crop={crop}
+              onChange={(newCrop) => setCrop(newCrop)}
+              onComplete={onCropComplete}
+              aspect={100 / 110} // Fixed aspect ratio
+              minWidth={100} // Minimum crop width
+              minHeight={110} // Minimum crop height
+            >
               <img
-                src={initiatorDetails.profile_picture}
-                alt="Initiator Profile"
-                style={{ width: "50px", height: "50px" }}
+                ref={imgRef}
+                src={src}
+                alt="Crop me"
+                style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }}
               />
-            )}
-            <h3>{initiatorDetails.full_name}</h3>
-            <p>{initiatorDetails.username}</p>
-            {initiatorDetails.full_name === 'First Member' && (
-              <p>You are the first member, no need for an initiator.</p>
-            )}
-            {initiatorDetails.full_name !== 'First Member' && (
-              <p>Are you sure this is the person who initiated you?</p>
-            )}
+            </ReactCrop>
+
+            {/* Zoom slider */}
+            <div className="slider-container">
+              <label>Zoom:</label>
+              <Slider
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                onChange={(e, newValue) => setZoom(newValue)}
+              />
+            </div>
+
+            {/* Rotation slider */}
+            <div className="slider-container">
+              <label>Rotation:</label>
+              <Slider
+                value={rotation}
+                min={0}
+                max={360}
+                step={1}
+                onChange={(e, newValue) => setRotation(newValue)}
+              />
+            </div>
+
+            <button type="button" onClick={handleUpload}>
+              Upload Cropped Image
+            </button>
+          </div>
+        )}
+
+        {croppedImage && (
+          <div>
+            <h2>Cropped Preview</h2>
+            <img src={croppedImage} alt="Cropped" style={{ borderRadius: '50%' }} />
           </div>
         )}
       </div>
 
+      {/* Initiator ID and details */}
+      <div className="form-group">
+        <label>Initiator ID:</label>
+        <input
+          type="text"
+          name="initiator_id"
+          value={formData.initiator_id}
+          onChange={handleInitiatorIDChange}
+          placeholder="Enter Initiator ID"
+        />
+        {error && <div className="error-message">{error}</div>}
+      </div>
+
+      {/* Submit button */}
       <button type="submit">Submit</button>
     </form>
-    
   );
-};
+}
 
-export default Registration
-
+export default Registration;

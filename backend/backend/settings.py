@@ -164,3 +164,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.Petitioner'
 
 CORS_ALLOWED_ORIGINS = [os.getenv('Frontendurl')]
+
+CSRF_TRUSTED_ORIGINS = [os.getenv('Frontendurl')]
+
+CSRF_COOKIE_NAME = "csrftoken"

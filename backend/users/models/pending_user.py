@@ -1,12 +1,14 @@
 from django.db import models, transaction
 from address.models import Country, State, District, SubDistrict, Village
 from .petitioners import Petitioner
+from .profilepicture import ProfilePicture
+
 
 class PendingUser(models.Model):
     gmail = models.EmailField(unique=True, null=False, blank=False)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/')
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
 
@@ -21,29 +23,35 @@ class PendingUser(models.Model):
 
     def __str__(self):
         return self.gmail
-
+ 
     def save(self, *args, **kwargs):
-        if self.initiator_id == 0:
-            self.initiator_id = None
-            self.is_verified = True
-            self.verify_and_transfer()
-        else:
-            from ..channels.channelViews import send_notification_to_initiator 
-            notification_id = f"{self.gmail}"
-            print(f"Generated Notification ID: {notification_id}")
+        creating = self._state.adding  # Check if the instance is being created
 
-            # Call notification function with the notification ID
-            print("send_notification_to_initiator is about to be called")
-            send_notification_to_initiator(
-                self.initiator_id,
-                {
-                    "message": f"Are you initiating {self.first_name} {self.last_name}?",
-                    "notificationId": notification_id,
-                },
-            )
-            print(f"Notification sent with ID: {notification_id}")
-        
-        return super().save(*args, **kwargs)
+        if creating:
+            super().save(*args, **kwargs)  # Save the PendingUser instance first
+            
+            if self.initiator_id != 0:
+                from .notifications import InitiationNotification
+                # Create a new initiation notification instance
+                initiator = Petitioner.objects.get(id=self.initiator_id)
+                InitiationNotification.objects.create(
+                    initiator=initiator,
+                    applicant=self,
+                    sent=False,
+                    viewed=False,
+                    reacted=False,
+                    completed=False,
+                    deleted=False
+                )
+
+            if self.initiator_id == 0:
+                self.initiator_id = None
+                self.is_verified = True
+                self.verify_and_transfer()
+        else:
+            super().save(*args, **kwargs)
+
+
 
     @transaction.atomic
     def verify_and_transfer(self):
@@ -71,7 +79,7 @@ class PendingUser(models.Model):
             # Log fields for debugging
             print(f"First name: {first_name}")
             print(f"Last name: {last_name}")
-            print(f"Profile picture URL: {profile_picture_url}")
+            
             print(f"Gender: {gender}")
             print(f"Country: {self.country}")
             print(f"State: {self.state}")
@@ -81,10 +89,11 @@ class PendingUser(models.Model):
 
             # Create Petitioner object
             petitioner = Petitioner.objects.create(
+                
                 gmail=self.gmail,
                 first_name=first_name,
                 last_name=last_name,
-                profile_picture=profile_picture_url,
+                profile_picture=self.profile_picture,
                 date_of_birth=self.date_of_birth,
                 gender=gender,
                 country=self.country,
@@ -94,6 +103,7 @@ class PendingUser(models.Model):
                 village=self.village,
                 initiator_id=initiator  # Pass the Petitioner instance
             )
+            print(f"Petitioner created with ID: {petitioner.id}")
 
             # Remove the pending user record
             self.delete()

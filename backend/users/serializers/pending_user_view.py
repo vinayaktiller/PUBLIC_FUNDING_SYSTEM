@@ -51,7 +51,9 @@ class ValidateInitiatorAPIView(APIView):
         
 @api_view(['POST'])
 def create_pending_user(request):
+    #print(request.data.profile_picture.)
     serializer = PendingUserSerializer(data=request.data)
+    #print(serializer)
     if serializer.is_valid():
         serializer.save()    
         return Response(serializer.data, status=status.HTTP_201_CREATED)

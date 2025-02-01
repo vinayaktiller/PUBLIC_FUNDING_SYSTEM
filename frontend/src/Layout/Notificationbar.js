@@ -19,13 +19,18 @@ function NotificationBar() {
                 <p>No notifications yet</p>
             ) : (
                 <ul>
-                    {notifications.map((notification, index) => (
+                    { notifications.map((notification, index) => {
+                        console.log(notification);
+                        
+                        return(
                         <li key={index}>
                             <p>{notification.message}</p>
+                            
                             <button onClick={() => handleResponse(notification.notificationId, "yes")}>Yes</button>
                             <button onClick={() => handleResponse(notification.notificationId, "no")}>No</button>
                         </li>
-                    ))}
+                        );
+                    })}
                 </ul>
             )}
         </div>

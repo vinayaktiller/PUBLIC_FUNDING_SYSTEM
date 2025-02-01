@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { login as Login } from '../../User/userSlice';
 
 function Waitingpage() {
   const user_email = localStorage.getItem("user_email");
   const [isInitiated, setIsInitiated] = useState(false);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (user_email) {
@@ -18,16 +22,20 @@ function Waitingpage() {
       // Listen for messages
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data); // Parse the incoming message
-          console.log('Message received:', data); // Log received message
-          if (data.isInitiated = true) {
-            setIsInitiated(data.isInitiated);
-            console.log(data.isInitiated);
-          }
+            const data = JSON.parse(event.data); // Parse the incoming message
+            console.log('Message received:', data); // Log received message
+            if (data.isInitiated === true) { // Use === for comparison
+                setIsInitiated(data.isInitiated);
+                localStorage.setItem("user_id", data.user_id);
+                console.log(data.user_id);
+                console.log(data);
+                console.log(data.isInitiated);
+            }
         } catch (error) {
-          console.error("Failed to parse WebSocket message", error);
+            console.error("Failed to parse WebSocket message", error);
         }
       };
+    
 
       // Handle errors
       ws.onerror = (error) => {
@@ -47,8 +55,11 @@ function Waitingpage() {
   }, [user_email]);
 
   const handleOkClick = () => {
+    
 
-    Navigate('/landing-page');
+    dispatch(Login({ user_email }));
+
+    navigate('/landing-page');
     //window.location.href = "/landing-page"; // Adjust the path to your landing page
   };
 

@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import date
 from address.models import Country, State, District, SubDistrict, Village
 from mptt.models import MPTTModel, TreeForeignKey
+from .profilepicture import ProfilePicture
 
 # Custom User Manager
 class CustomUserManager(BaseUserManager):
@@ -41,8 +42,7 @@ class Petitioner(AbstractBaseUser):
     last_name = models.CharField(max_length=30)
     full_name = models.CharField(max_length=60, editable=False)
     username = models.CharField(max_length=50, unique=True, null=True, blank=True)
-    profile_picture = models.URLField(blank=True)
-
+    profile_picture = models.ImageField(upload_to='profile_pictures/')
     
     date_of_birth = models.DateField()
     age = models.PositiveIntegerField(editable=False)
@@ -55,6 +55,8 @@ class Petitioner(AbstractBaseUser):
     subdistrict = models.ForeignKey(SubDistrict, on_delete=models.SET_NULL, null=True)
     village = models.ForeignKey(Village, on_delete=models.SET_NULL, null=True)
     address = models.TextField()  # additional address details
+
+    is_online = models.BooleanField(default=False)
     
     initiator_id = TreeForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='initiated_petitioners')
     
@@ -70,18 +72,23 @@ class Petitioner(AbstractBaseUser):
     REQUIRED_FIELDS = ['first_name', 'last_name', 'username']
 
     def save(self, *args, **kwargs):
+        print("Petitioner.save called")
         # Automatically calculate full name and age
         self.full_name = f"{self.first_name}{self.last_name}"
+        print(f"Full name: {self.full_name}")
         self.age = self.calculate_age()
 
         # Automatically generate unique user_id based on existing petitioners
-        print("Petitioner saved with username: " + self.username)
+        
         
         super().save(*args, **kwargs)
 
     def calculate_age(self):
         today = date.today()
-        return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+        print(f"Today's date: {today}")
+        ag=today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+        print(f"Calculated age: {ag}")
+        return ag
 
     def __str__(self):
         return f"({self.username})"

@@ -2,19 +2,19 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from users.models import PendingUser
 
-def send_notification_to_initiator(initiator_id, message):
-    channel_layer = get_channel_layer()
-    group_name = f"notifications_{initiator_id}"
-    print("Group name is " + group_name)
+# def send_notification_to_initiator(initiator_id, message):
+#     channel_layer = get_channel_layer()
+#     group_name = f"notifications_{initiator_id}"
+#     print("Group name is " + group_name)
 
-    async_to_sync(channel_layer.group_send)(
-        group_name,
-        {
-            "type": "send_notification",
-            "notification": message
-        }
-    )
-    print("Notification sent to initiator with message: " + str(message))
+#     async_to_sync(channel_layer.group_send)(
+#         group_name,
+#         {
+#             "type": "send_notification",
+#             "notification": message
+#         }
+#     )
+#     print("Notification sent to initiator with message: " + str(message))
 
 def handle_response_from_user( notification_id, response):
     """

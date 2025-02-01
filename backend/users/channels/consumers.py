@@ -3,6 +3,9 @@ import json
 from channels.db import database_sync_to_async
 from users.models import PendingUser  # Make sure to import your model
 import re
+from asgiref.sync import sync_to_async
+from users.signals import user_online, user_offline
+
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -15,6 +18,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.group_name,
             self.channel_name
         )
+        # Send signal that the user is online
+        await sync_to_async(user_online.send)(sender=self.__class__, user_id=self.user_id)
 
         await self.accept()
 
@@ -24,6 +29,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.group_name,
             self.channel_name
         )
+        # Send signal that the user is offline
+        await sync_to_async(user_offline.send)(sender=self.__class__, user_id=self.user_id)
 
     async def receive(self, text_data):
         """
@@ -80,6 +87,43 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             # General error handling
             print(f"Error in receive method: {e}")
             await self.send(json.dumps({"error": str(e)}))
+
+
+
+
+    async def send_notification(self, event):
+        """
+        Sends notifications to the WebSocket client.
+        """
+        notification = event["notification"]
+
+        # Send notification to WebSocket
+        await self.send(text_data=json.dumps({
+            "notification": notification
+        }))
+
+    async def process_response(self, event):
+        """
+        Processes the response and optionally forwards it.
+        """
+        notification_id = event["notification_id"]
+        response = event["response"]
+
+        # Placeholder for response processing
+        print(f"Processing response: {response} for notification ID: {notification_id}")
+
+
+    async def notification_message(self, event):
+        """
+        Handles incoming notification messages.
+        """
+        notification = event['notification']
+       
+        # Send the notification message to the WebSocket
+        await self.send(text_data=json.dumps({
+            "notification": notification,
+            
+        }))
 
 
     # async def receive(self, text_data):
@@ -153,29 +197,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     #         print(f"Error handling response from handle_response_from_user: {e}")
     #     return response
 
-    async def send_notification(self, event):
-        """
-        Sends notifications to the WebSocket client.
-        """
-        notification = event["notification"]
-
-        # Send notification to WebSocket
-        await self.send(text_data=json.dumps({
-            "notification": notification
-        }))
-
-    async def process_response(self, event):
-        """
-        Processes the response and optionally forwards it.
-        """
-        notification_id = event["notification_id"]
-        response = event["response"]
-
-        # Placeholder for response processing
-        print(f"Processing response: {response} for notification ID: {notification_id}")
-
-
-
 
 class WaitingpageConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -209,8 +230,15 @@ class WaitingpageConsumer(AsyncWebsocketConsumer):
         )
 
     async def waitingpage_message(self, event):
-        message = event['message']
+        # Directly access the keys sent in the message
+        user_email = event['user_email']
+        isInitiated = event['isInitiated']
+        user_id = event['user_id']
+        
+        # Construct the message to send to WebSocket client
         await self.send(text_data=json.dumps({
-            'message': message
+            'user_email': user_email,
+            'isInitiated': isInitiated,
+            'user_id': user_id
         }))
 
